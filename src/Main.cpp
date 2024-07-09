@@ -1,12 +1,10 @@
-// SFMLGame.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
 #include <SFML/Graphics.hpp>
 
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode(300, 300), "SFML works!");
+	sf::RenderWindow window(sf::VideoMode(1280, 720), "SFML Test");
 	sf::CircleShape shape(100.f);
-	shape.setFillColor(sf::Color::Yellow);
+	shape.setFillColor(sf::Color::Green);
 
 	while (window.isOpen())
 	{
