@@ -133,10 +133,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\AShape.cpp" />
     <ClCompile Include="src\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.txt" />
+    <Content Include="fonts\KillerTech.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\AShape.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
