@@ -93,7 +93,7 @@
       <AdditionalDependencies>sfml-graphics.lib;sfml-audio.lib;sfml-network.lib;sfml-system.lib;sfml-window.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>RD /S /Q $(IntDir);</Command>
+      <Command>RD /S /Q $(IntDir);DEL /S /Q $(OutDir)*.pdb;</Command>
     </PostBuildEvent>
     <BuildLog />
   </ItemDefinitionGroup>

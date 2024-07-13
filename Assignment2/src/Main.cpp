@@ -1,7 +1,22 @@
-#include <iostream>
+#include <SFML/Graphics.hpp>
 
 int main()
 {
-	std::cout << "Hello" << "\n";
+	sf::RenderWindow window(sf::VideoMode(1920, 1080), "SFML Test");
+	// set this to avoid speed too fast
+	// window.setFramerateLimit(60);
+	window.setVerticalSyncEnabled(true);
+	while (window.isOpen())
+	{
+		sf::Event event;
+		while (window.pollEvent(event))
+		{
+			if (event.type == sf::Event::Closed)
+				window.close();
+		}
+
+		window.clear();
+		window.display();
+	}
 	return 0;
 }
