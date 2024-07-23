@@ -22,4 +22,8 @@ public:
     void operator /=(float val);
 
     float distanceSquare(const Vec2& vin) const;
+    float distance(const Vec2& vin) const;
+    float length() const;
+    float lengthSquare() const;
+    void normalize();
 };

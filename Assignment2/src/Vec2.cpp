@@ -62,6 +62,28 @@ void Vec2::operator *=(const float val)
     y *= val;
 }
 
+float Vec2::distance(const Vec2& vin) const
+{
+    return sqrtf(distanceSquare(vin));
+}
+
+float Vec2::length() const
+{
+    return sqrtf(lengthSquare());
+}
+
+float Vec2::lengthSquare() const
+{
+    return x * x + y * y;
+}
+
+void Vec2::normalize()
+{
+    const float _length = length();
+    x /= _length;
+    y /= _length;
+}
+
 void Vec2::operator /=(const float val)
 {
     x /= val;

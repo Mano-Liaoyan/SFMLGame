@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <cmath>
+#include <memory>
+#include <memory>
 
 void Game::pause(const bool paused)
 {
@@ -36,6 +38,8 @@ void Game::initialization(const std::string& path)
                 return;
             }
             m_text.setFillColor(sf::Color(fr, fg, fb));
+            m_text.setCharacterSize(font_size);
+            m_text.setFont(m_font);
         }
         else if (mode == "Player")
         {
@@ -59,14 +63,14 @@ void Game::initialization(const std::string& path)
     if (fullscreen)
     {
         m_window.create(sf::VideoMode::getDesktopMode(), "Assignment 2", sf::Style::Fullscreen);
-        // m_window.setVerticalSyncEnabled(true);
+        m_window.setVerticalSyncEnabled(true);
     }
     else
     {
         m_window.create(sf::VideoMode(window_w, window_h), "Assignment 2");
         m_window.setFramerateLimit(frame_limit);
     }
-
+    m_text.setPosition(0, 0);
     spawnPlayer();
 }
 
@@ -76,16 +80,47 @@ void Game::renderSystem()
     for (auto& e : m_entityManager.getEntities())
     {
         e->c_shape->shape.setPosition(e->c_transform->position.x, e->c_transform->position.y);
-        e->c_transform->angle += 5.0f * deltaTime();
+        e->c_transform->angle += 5.0f;
         e->c_shape->shape.setRotation(e->c_transform->angle);
         m_window.draw(e->c_shape->shape);
     }
-
+    m_text.setString(std::to_string(m_score));
+    m_window.draw(m_text);
     m_window.display();
 }
 
 void Game::lifespanSystem()
 {
+    for (auto& e : m_entityManager.getEntities())
+    {
+        if (!e->c_lifespan) { continue; }
+        if (e->c_lifespan->remaining > 0)
+        {
+            --e->c_lifespan->remaining;
+        }
+        if (e->isActive() && e->c_lifespan->remaining > 0)
+        {
+            const float alpha_multiplier{
+                static_cast<float>(e->c_lifespan->remaining) / static_cast<float>(e->c_lifespan->total)
+            };
+
+            const auto fill_color{e->c_shape->shape.getFillColor()};
+            sf::Color new_fill_color{
+                fill_color.r, fill_color.g, fill_color.b, static_cast<sf::Uint8>(255 * alpha_multiplier)
+            };
+            e->c_shape->shape.setFillColor(new_fill_color);
+
+            const auto outline_color{e->c_shape->shape.getOutlineColor()};
+            sf::Color new_outline_color{
+                outline_color.r, outline_color.g, outline_color.b, static_cast<sf::Uint8>(255 * alpha_multiplier)
+            };
+            e->c_shape->shape.setOutlineColor(new_outline_color);
+        }
+        else if (e->c_lifespan->remaining <= 0)
+        {
+            e->destroy();
+        }
+    }
 }
 
 void Game::movementSystem()
@@ -111,7 +146,7 @@ void Game::movementSystem()
 
     for (auto& e : m_entityManager.getEntities())
     {
-        e->c_transform->position += e->c_transform->velocity * deltaTime();
+        e->c_transform->position += e->c_transform->velocity;
     }
 }
 
@@ -149,6 +184,7 @@ void Game::collisionSystem()
 
             for (auto& player : m_entityManager.getEntities(ENTITY_TAG::Player))
             {
+                if (entity->getTag() == ENTITY_TAG::Bullet) continue;
                 if (player->c_transform->position.distanceSquare(entity->c_transform->position) <=
                     std::pow(player->c_collision->radius + entity->c_collision->radius, 2))
                 {
@@ -156,7 +192,6 @@ void Game::collisionSystem()
                     if (player->isActive())
                     {
                         m_score = 0;
-                        m_text.setString(std::to_string(m_score));
                         entity->destroy();
                         player->destroy();
                         spawnPlayer();
@@ -170,7 +205,29 @@ void Game::collisionSystem()
                 if (entity->c_transform->position.distanceSquare(enemy->c_transform->position) <=
                     std::pow(entity->c_collision->radius + enemy->c_collision->radius, 2))
                 {
-                    entity->c_transform->velocity *= -1.0f;
+                    if (entity->getTag() == ENTITY_TAG::Bullet)
+                    {
+                        m_score += 100;
+                        enemy->destroy();
+                        entity->destroy();
+                    }
+                    else if (entity->getTag() == ENTITY_TAG::Enemy)
+                    {
+                        const float distance = entity->c_transform->position.distance(enemy->c_transform->position);
+                        const float overlap = (distance - entity->c_collision->radius - enemy->c_collision->radius);
+                        const float dx = (
+                            entity->c_transform->position.x -
+                            enemy->c_transform->position.x
+                        ) / distance;
+
+                        const float dy = (
+                            entity->c_transform->position.y -
+                            enemy->c_transform->position.y
+                        ) / distance;
+
+                        entity->c_transform->velocity.x -= 0.5f * overlap * dx;
+                        entity->c_transform->velocity.y -= 0.5f * overlap * dy;
+                    }
                 }
             }
         }
@@ -227,6 +284,19 @@ void Game::userInputSystem()
                 break;
             case sf::Keyboard::S:
                 m_player->c_input->down = false;
+                break;
+            default: break;
+            }
+        }
+        if (event.type == sf::Event::MouseButtonPressed)
+        {
+            switch (event.mouseButton.button)
+            {
+            case sf::Mouse::Left:
+                spawnBullet(m_player, Vec2(event.mouseButton.x, event.mouseButton.y));
+                break;
+            case (sf::Mouse::Right):
+                spawnSpecialWeapon(m_player);
                 break;
             default: break;
             }
@@ -288,8 +358,31 @@ void Game::spawnEnemy()
     m_lastEnemySpawnTime = m_currentFrame;
 }
 
-void Game::spawnBullet()
+void Game::spawnBullet(const std::shared_ptr<Entity>& entity, const Vec2& target)
 {
+    const auto bullet = m_entityManager.addEntity(ENTITY_TAG::Bullet);
+    sf::Color fill_color
+    {
+        static_cast<sf::Uint8>(m_bulletConfig.FR),
+        static_cast<sf::Uint8>(m_bulletConfig.FG),
+        static_cast<sf::Uint8>(m_bulletConfig.FB)
+    };
+
+    sf::Color outline_color
+    {
+        static_cast<sf::Uint8>(m_bulletConfig.OR),
+        static_cast<sf::Uint8>(m_bulletConfig.OG),
+        static_cast<sf::Uint8>(m_bulletConfig.OB)
+    };
+
+    bullet->c_shape = std::make_shared<CShape>(m_bulletConfig.SR, m_bulletConfig.V,
+                                               fill_color, outline_color, m_bulletConfig.OT);
+    bullet->c_lifespan = std::make_shared<CLifespan>(m_bulletConfig.L);
+    bullet->c_collision = std::make_shared<CCollision>(m_bulletConfig.CR);
+    Vec2 difference = target - entity->c_transform->position;
+    difference.normalize();
+    Vec2 velocity{m_bulletConfig.S * difference.x, m_bulletConfig.S * difference.y};
+    bullet->c_transform = std::make_shared<CTransform>(entity->c_transform->position, velocity, 0.0f);
 }
 
 void Game::spawnPlayer()
@@ -307,12 +400,51 @@ void Game::spawnPlayer()
     m_player = player;
 }
 
-void Game::spawnSmallEnemies()
+void Game::spawnSmallEnemies(std::shared_ptr<Entity> entity)
 {
 }
 
-void Game::spawnSpecialWeapon()
+void Game::spawnSpecialWeapon(const std::shared_ptr<Entity>& entity)
 {
+    float angle{0};
+
+    for (int j{0}; j < 36; ++j)
+    {
+        const auto bullet = m_entityManager.addEntity(ENTITY_TAG::Bullet);
+
+        bullet->c_shape = std::make_shared<CShape>(m_bulletConfig.SR, m_bulletConfig.V,
+                                                   sf::Color(m_bulletConfig.FR, m_bulletConfig.FG, m_bulletConfig.FB),
+                                                   sf::Color(m_bulletConfig.OR, m_bulletConfig.OG, m_bulletConfig.OB),
+                                                   m_bulletConfig.OT);
+
+        bullet->c_collision = std::make_shared<CCollision>(m_bulletConfig.CR);
+
+        bullet->c_lifespan = std::make_shared<CLifespan>(m_bulletConfig.L * 10);
+
+
+        Vec2 normalized_pos = entity->c_transform->position;
+        normalized_pos.normalize();
+
+        //Calculate the velocity
+
+        const float radians{angle * 3.1415926f / 180.0f};
+
+        Vec2 velocity
+        {
+            std::cos(radians) * normalized_pos.x + std::sin(radians) * normalized_pos.y,
+            std::sin(radians) * normalized_pos.x - std::cos(radians) * normalized_pos.y,
+        };
+
+        const float l{velocity.length()};
+
+        const Vec2 normalized_velocity{velocity.x / l, velocity.y / l};
+
+        Vec2 new_velocity{normalized_velocity.x * m_bulletConfig.S, normalized_velocity.y * m_bulletConfig.S};
+
+        bullet->c_transform = std::make_shared<CTransform>(m_player->c_transform->position, new_velocity, 0);
+
+        angle += 360 / 36.0f;
+    }
 }
 
 float Game::deltaTime() const
@@ -336,6 +468,7 @@ void Game::run()
             enemySpawnerSystem();
             movementSystem();
             collisionSystem();
+            lifespanSystem();
         }
 
         userInputSystem();
