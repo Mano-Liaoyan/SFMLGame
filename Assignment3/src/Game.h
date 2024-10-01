@@ -60,7 +60,7 @@ class Game
     void spawnEnemy();
     void spawnBullet(const std::shared_ptr<Entity>& entity, const Vec2& target);
     void spawnPlayer();
-    void spawnSmallEnemies(std::shared_ptr<Entity> entity);
+    void spawnSmallEnemies(const std::shared_ptr<Entity>& entity);
     void spawnSpecialWeapon(const std::shared_ptr<Entity>& entity);
 
     float deltaTime() const;

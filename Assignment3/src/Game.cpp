@@ -1,12 +1,11 @@
 ﻿#include <iostream>
 #include <fstream>
-
+#include <cmath>
 #include "Game.h"
 
 #include <memory>
-#include <cmath>
-#include <memory>
-#include <memory>
+
+#define PI 3.1415926535897932384626433832795
 
 void Game::pause(const bool paused)
 {
@@ -63,7 +62,7 @@ void Game::initialization(const std::string& path)
     if (fullscreen)
     {
         m_window.create(sf::VideoMode::getDesktopMode(), "Assignment 2", sf::Style::Fullscreen);
-        m_window.setVerticalSyncEnabled(true);
+        m_window.setFramerateLimit(60);
     }
     else
     {
@@ -208,6 +207,7 @@ void Game::collisionSystem()
                     if (entity->getTag() == ENTITY_TAG::Bullet)
                     {
                         m_score += 100;
+                        spawnSmallEnemies(enemy);
                         enemy->destroy();
                         entity->destroy();
                     }
@@ -400,8 +400,27 @@ void Game::spawnPlayer()
     m_player = player;
 }
 
-void Game::spawnSmallEnemies(std::shared_ptr<Entity> entity)
+void Game::spawnSmallEnemies(const std::shared_ptr<Entity>& entity)
 {
+    const int step = 360 / entity->c_shape->points;
+    for (int i = 0; i < entity->c_shape->points; i++)
+    {
+        const auto enemy = m_entityManager.addEntity(ENTITY_TAG::SmallEnemy);
+        const float x_vel = static_cast<float>(cos(i * step * PI / 180));
+        const float y_vel = static_cast<float>(sin(i * step * PI / 180));
+        const auto speed = entity->c_transform->velocity.length();
+        Vec2 vel(x_vel, y_vel);
+        vel *= speed;
+        enemy->c_transform = std::make_shared<CTransform>(entity->c_transform->position, vel, 0.0f);
+
+        enemy->c_shape = std::make_shared<CShape>(m_enemyConfig.SR / 2, entity->c_shape->points,
+                                                  entity->c_shape->shape.getFillColor(),
+                                                  entity->c_shape->shape.getOutlineColor(),
+                                                  m_enemyConfig.OT / 2);
+        enemy->c_collision = std::make_shared<CCollision>(m_enemyConfig.CR / 2);
+        enemy->c_lifespan = std::make_shared<CLifespan>(m_enemyConfig.L);
+        m_lastEnemySpawnTime = m_currentFrame;
+    }
 }
 
 void Game::spawnSpecialWeapon(const std::shared_ptr<Entity>& entity)
@@ -469,11 +488,10 @@ void Game::run()
             movementSystem();
             collisionSystem();
             lifespanSystem();
+            m_currentFrame++;
         }
-
         userInputSystem();
         renderSystem();
         m_elapsedTime = m_clock.restart();
-        m_currentFrame++; // Need to be moved when pause implemented
     }
 }

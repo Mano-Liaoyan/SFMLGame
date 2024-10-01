@@ -5,8 +5,6 @@
 
 #include <memory>
 #include <cmath>
-#include <memory>
-#include <memory>
 
 void Game::pause(const bool paused)
 {

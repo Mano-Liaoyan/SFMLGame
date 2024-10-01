@@ -19,11 +19,13 @@ class CShape
 {
 public:
     sf::CircleShape shape;
+    int points;
 
     CShape(const float radius, const int points,
            const sf::Color& fillColor, const sf::Color outlineColor, const float thickness)
         : shape(radius, points)
     {
+        this->points = points;
         shape.setFillColor(fillColor);
         shape.setOutlineColor(outlineColor);
         shape.setOutlineThickness(thickness);
